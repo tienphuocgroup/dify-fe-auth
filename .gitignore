@@ -12,6 +12,10 @@
 /.next/
 /out/
 
+CLAUDE.md
+
+.labs
+
 # production
 /build
 
