@@ -1,20 +1,47 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  productionBrowserSourceMaps: false, // enable browser source map generation during the production build
-  // Configure pageExtensions to include md and mdx
+  productionBrowserSourceMaps: false,
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   experimental: {
-    // appDir: true,
+    optimizePackageImports: ['@azure/msal-react'],
   },
-  // fix all before production. Now it slow the develop speed.
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Add retry logic for chunk loading
+      config.output.chunkLoadTimeout = 30000 // 30 seconds
+      config.output.crossOriginLoading = 'anonymous'
+    }
+    return config
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ]
+  },
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: process.env.NODE_ENV === 'production',
   },
   typescript: {
-    // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: process.env.NODE_ENV === 'production',
   },
 }
 

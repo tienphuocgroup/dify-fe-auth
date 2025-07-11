@@ -3,14 +3,15 @@ import { NextResponse } from 'next/server'
 import { client, getInfo, setSession } from '@/app/api/utils/common'
 
 export async function GET(request: NextRequest) {
-  const { sessionId, user } = getInfo(request)
   try {
+    const { sessionId, user } = getInfo(request)
     const { data } = await client.getApplicationParameters(user)
     return NextResponse.json(data as object, {
       headers: setSession(sessionId),
     })
   }
-  catch (error) {
-    return NextResponse.json([])
+  catch (error: any) {
+    console.error('Parameters API error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

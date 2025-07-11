@@ -10,6 +10,10 @@ export async function POST(request: NextRequest) {
     return new Response(res.data.id as any)
   }
   catch (e: any) {
-    return new Response(e.message)
+    console.error('File upload API error:', e)
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 }

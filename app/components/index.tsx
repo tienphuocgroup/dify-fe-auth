@@ -6,10 +6,13 @@ import { useTranslation } from 'react-i18next'
 import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import useConversation from '@/hooks/use-conversation'
+import { useAuthContext } from '@/contexts/auth-context'
+import { setAuthTokenProvider } from '@/service/base'
 import Toast from '@/app/components/base/toast'
 import Sidebar from '@/app/components/sidebar'
 import ConfigSence from '@/app/components/config-scence'
 import Header from '@/app/components/header'
+import AuthGuard from '@/app/components/auth/auth-guard'
 import { fetchAppParams, fetchChatList, fetchConversations, generationConversationName, sendChatMessage, updateFeedback } from '@/service'
 import type { ChatItem, ConversationItem, Feedbacktype, PromptConfig, VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod, WorkflowRunningStatus } from '@/types/app'
@@ -32,6 +35,12 @@ const Main: FC<IMainProps> = () => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const hasSetAppConfig = APP_ID && API_KEY
+  const { getAccessToken, isAuthenticated, isLoading } = useAuthContext()
+
+  // Set up authentication token provider for service layer
+  useEffect(() => {
+    setAuthTokenProvider(getAccessToken)
+  }, [getAccessToken])
 
   /*
   * app info
@@ -212,7 +221,7 @@ const Main: FC<IMainProps> = () => {
       isAnswer: true,
       feedbackDisabled: true,
       isOpeningStatement: isShowPrompt,
-      suggestedQuestions: suggestedQuestions,
+      suggestedQuestions,
     }
     if (calculatedIntroduction)
       return [openStatement]
@@ -226,18 +235,30 @@ const Main: FC<IMainProps> = () => {
       setAppUnavailable(true)
       return
     }
+    // Allow initialization for both authenticated and unauthenticated users
+    if (isLoading)
+      return
     (async () => {
       try {
         const [conversationData, appParams] = await Promise.all([fetchConversations(), fetchAppParams()])
         // handle current conversation id
         const { data: conversations, error } = conversationData as { data: ConversationItem[]; error: string }
         if (error) {
-          Toast.notify({ type: 'error', message: error })
-          throw new Error(error)
-          return
+          // For unauthenticated users, start with empty conversation list
+          if (!isAuthenticated) {
+            setConversationList([])
+          }
+          else {
+            Toast.notify({ type: 'error', message: error })
+            throw new Error(error)
+          }
         }
+        else {
+          setConversationList(conversations as ConversationItem[])
+        }
+
         const _conversationId = getConversationIdFromStorage(APP_ID)
-        const currentConversation = conversations.find(item => item.id === _conversationId)
+        const currentConversation = conversations?.find(item => item.id === _conversationId)
         const isNotNewConversation = !!currentConversation
 
         // fetch new conversation info
@@ -246,13 +267,13 @@ const Main: FC<IMainProps> = () => {
         setNewConversationInfo({
           name: t('app.chat.newChatDefaultName'),
           introduction,
-          suggested_questions
+          suggested_questions,
         })
         if (isNotNewConversation) {
           setExistConversationInfo({
             name: currentConversation.name || t('app.chat.newChatDefaultName'),
             introduction,
-            suggested_questions
+            suggested_questions,
           })
         }
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
@@ -264,9 +285,8 @@ const Main: FC<IMainProps> = () => {
           ...file_upload?.image,
           image_file_size_limit: system_parameters?.system_parameters || 0,
         })
-        setConversationList(conversations as ConversationItem[])
 
-        if (isNotNewConversation)
+        if (isNotNewConversation && isAuthenticated)
           setCurrConversationId(_conversationId, APP_ID, false)
 
         setInited(true)
@@ -281,7 +301,7 @@ const Main: FC<IMainProps> = () => {
         }
       }
     })()
-  }, [])
+  }, [hasSetAppConfig, isAuthenticated, isLoading])
 
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
@@ -655,58 +675,60 @@ const Main: FC<IMainProps> = () => {
     return <Loading type='app' />
 
   return (
-    <div className='bg-gray-100'>
-      <Header
-        title={APP_INFO.title}
-        isMobile={isMobile}
-        onShowSideBar={showSidebar}
-        onCreateNewChat={() => handleConversationIdChange('-1')}
-      />
-      <div className="flex rounded-t-2xl bg-white overflow-hidden">
-        {/* sidebar */}
-        {!isMobile && renderSidebar()}
-        {isMobile && isShowSidebar && (
-          <div className='fixed inset-0 z-50'
-            style={{ backgroundColor: 'rgba(35, 56, 118, 0.2)' }}
-            onClick={hideSidebar}
-          >
-            <div className='inline-block' onClick={e => e.stopPropagation()}>
-              {renderSidebar()}
+    <AuthGuard requireAuth={false}>
+      <div className='bg-gray-100'>
+        <Header
+          title={APP_INFO.title}
+          isMobile={isMobile}
+          onShowSideBar={showSidebar}
+          onCreateNewChat={() => handleConversationIdChange('-1')}
+        />
+        <div className="flex rounded-t-2xl bg-white overflow-hidden">
+          {/* sidebar */}
+          {!isMobile && renderSidebar()}
+          {isMobile && isShowSidebar && (
+            <div className='fixed inset-0 z-50'
+              style={{ backgroundColor: 'rgba(35, 56, 118, 0.2)' }}
+              onClick={hideSidebar}
+            >
+              <div className='inline-block' onClick={e => e.stopPropagation()}>
+                {renderSidebar()}
+              </div>
             </div>
-          </div>
-        )}
-        {/* main */}
-        <div className='flex-grow flex flex-col h-[calc(100vh_-_3rem)] overflow-y-auto'>
-          <ConfigSence
-            conversationName={conversationName}
-            hasSetInputs={hasSetInputs}
-            isPublicVersion={isShowPrompt}
-            siteInfo={APP_INFO}
-            promptConfig={promptConfig}
-            onStartChat={handleStartChat}
-            canEditInputs={canEditInputs}
-            savedInputs={currInputs as Record<string, any>}
-            onInputsChange={setCurrInputs}
-          ></ConfigSence>
+          )}
+          {/* main */}
+          <div className='flex-grow flex flex-col h-[calc(100vh_-_3rem)] overflow-y-auto'>
+            <ConfigSence
+              conversationName={conversationName}
+              hasSetInputs={hasSetInputs}
+              isPublicVersion={isShowPrompt}
+              siteInfo={APP_INFO}
+              promptConfig={promptConfig}
+              onStartChat={handleStartChat}
+              canEditInputs={canEditInputs}
+              savedInputs={currInputs as Record<string, any>}
+              onInputsChange={setCurrInputs}
+            ></ConfigSence>
 
-          {
-            hasSetInputs && (
-              <div className='relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full pb-[66px] mx-auto mb-3.5 overflow-hidden'>
-                <div className='h-full overflow-y-auto' ref={chatListDomRef}>
-                  <Chat
-                    chatList={chatList}
-                    onSend={handleSend}
-                    onFeedback={handleFeedback}
-                    isResponding={isResponding}
-                    checkCanSend={checkCanSend}
-                    visionConfig={visionConfig}
-                  />
-                </div>
-              </div>)
-          }
+            {
+              hasSetInputs && (
+                <div className='relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full pb-[66px] mx-auto mb-3.5 overflow-hidden'>
+                  <div className='h-full overflow-y-auto' ref={chatListDomRef}>
+                    <Chat
+                      chatList={chatList}
+                      onSend={handleSend}
+                      onFeedback={handleFeedback}
+                      isResponding={isResponding}
+                      checkCanSend={checkCanSend}
+                      visionConfig={visionConfig}
+                    />
+                  </div>
+                </div>)
+            }
+          </div>
         </div>
       </div>
-    </div>
+    </AuthGuard>
   )
 }
 

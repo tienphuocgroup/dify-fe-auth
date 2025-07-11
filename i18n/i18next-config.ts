@@ -31,6 +31,8 @@ const resources = {
     translation: {
       common: commonEs,
       app: appEs,
+      // tools not available for Spanish, using English as fallback
+      tools: toolsEn,
     },
   },
   'zh-Hans': {

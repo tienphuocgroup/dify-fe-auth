@@ -22,6 +22,13 @@ const baseOptions = {
   redirect: 'follow',
 }
 
+// Helper function to get auth token from context
+let getAuthToken: (() => Promise<string | null>) | null = null
+
+export const setAuthTokenProvider = (provider: () => Promise<string | null>) => {
+  getAuthToken = provider
+}
+
 export type WorkflowStartedResponse = {
   task_id: string
   workflow_run_id: string
@@ -248,8 +255,20 @@ const handleStream = (
   read()
 }
 
-const baseFetch = (url: string, fetchOptions: any, { needAllResponseContent }: IOtherOptions) => {
+const baseFetch = async (url: string, fetchOptions: any, { needAllResponseContent }: IOtherOptions) => {
   const options = Object.assign({}, baseOptions, fetchOptions)
+
+  // Add authentication token if available
+  if (getAuthToken) {
+    try {
+      const token = await getAuthToken()
+      if (token)
+        options.headers.set('Authorization', `Bearer ${token}`)
+    }
+    catch (error) {
+      console.warn('Failed to get auth token:', error)
+    }
+  }
 
   const urlPrefix = API_PREFIX
 
@@ -361,7 +380,7 @@ export const upload = (fetchOptions: any): Promise<any> => {
   })
 }
 
-export const ssePost = (
+export const ssePost = async (
   url: string,
   fetchOptions: any,
   {
@@ -381,6 +400,18 @@ export const ssePost = (
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
   }, fetchOptions)
+
+  // Add authentication token if available
+  if (getAuthToken) {
+    try {
+      const token = await getAuthToken()
+      if (token)
+        options.headers.set('Authorization', `Bearer ${token}`)
+    }
+    catch (error) {
+      console.warn('Failed to get auth token:', error)
+    }
+  }
 
   const urlPrefix = API_PREFIX
   const urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
