@@ -2,9 +2,13 @@ import { type NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { client, getInfo } from '@/app/api/utils/common'
 
-export async function POST(request: NextRequest, { params }: {
-  params: { conversationId: string }
-}) {
+export async function POST(
+  request: NextRequest,
+  props: {
+    params: Promise<{ conversationId: string }>
+  }
+) {
+  const params = await props.params;
   const body = await request.json()
   const {
     auto_generate,

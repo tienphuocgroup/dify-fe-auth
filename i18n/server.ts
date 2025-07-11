@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { cookies, headers } from 'next/headers'
+import { cookies, headers, type UnsafeUnwrappedCookies, type UnsafeUnwrappedHeaders } from 'next/headers';
 import Negotiator from 'negotiator'
 import { match } from '@formatjs/intl-localematcher'
 import type { Locale } from '.'
@@ -12,13 +12,13 @@ export const getLocaleOnServer = (): Locale => {
 
   let languages: string[] | undefined
   // get locale from cookie
-  const localeCookie = cookies().get('locale')
+  const localeCookie = (cookies() as unknown as UnsafeUnwrappedCookies).get('locale')
   languages = localeCookie?.value ? [localeCookie.value] : []
 
   if (!languages.length) {
     // Negotiator expects plain object so we need to transform headers
     const negotiatorHeaders: Record<string, string> = {}
-    headers().forEach((value, key) => (negotiatorHeaders[key] = value))
+    (headers() as unknown as UnsafeUnwrappedHeaders).forEach((value, key) => (negotiatorHeaders[key] = value))
     // Use negotiator and intl-localematcher to get best locale
     languages = new Negotiator({ headers: negotiatorHeaders }).languages()
   }
