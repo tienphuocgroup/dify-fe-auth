@@ -2,7 +2,8 @@ import { type NextRequest } from 'next/server'
 import { ChatClient } from 'dify-client'
 import { API_KEY, API_URL, APP_ID } from '@/config'
 
-const userPrefix = `user_${APP_ID}:`
+const authUserPrefix = `auth_${APP_ID}:`
+const anonUserPrefix = `anon_${APP_ID}:`
 
 const decodeJWT = (token: string) => {
   try {
@@ -23,7 +24,7 @@ const generateSessionId = () => {
 const getSessionBasedInfo = (request: NextRequest) => {
   // Use existing session-based flow for unauthenticated users
   const sessionId = request.cookies.get('session_id')?.value || generateSessionId()
-  const user = userPrefix + sessionId
+  const user = anonUserPrefix + sessionId
 
   return {
     sessionId,
@@ -48,18 +49,19 @@ export const getInfo = (request: NextRequest) => {
       return getSessionBasedInfo(request)
     }
 
-    // Extract user ID from MSAL token claims
-    const userId = tokenPayload.oid || tokenPayload.sub || tokenPayload.unique_name
+    // Extract user ID from MSAL token claims - prioritize oid (Object ID) for corporate environments
+    // oid is the immutable, universal identifier recommended for corporate multi-app scenarios
+    const userId = tokenPayload.oid || tokenPayload.sub
 
     if (!userId) {
-      console.warn('Unable to identify user from authentication token')
+      console.warn('Unable to identify user from authentication token - no oid or sub claim found')
       // Fall back to session-based authentication
       return getSessionBasedInfo(request)
     }
 
     return {
       sessionId: userId,
-      user: userPrefix + userId,
+      user: authUserPrefix + userId,
       isAuthenticated: true,
       token: bearerToken,
       userInfo: {
@@ -74,9 +76,17 @@ export const getInfo = (request: NextRequest) => {
   return getSessionBasedInfo(request)
 }
 
-
 export const setSession = (sessionId: string) => {
-  return { 'Set-Cookie': `session_id=${sessionId}` }
+  return { 'Set-Cookie': `session_id=${sessionId}; Path=/; SameSite=Lax; HttpOnly=false` }
+}
+
+export const getSessionHeaders = (request: NextRequest, newSessionId: string) => {
+  const existingSessionId = request.cookies.get('session_id')?.value
+  // Only set cookie if session ID has changed
+  if (existingSessionId !== newSessionId) {
+    return setSession(newSessionId)
+  }
+  return {}
 }
 
 export const client = new ChatClient(API_KEY, API_URL || undefined)
