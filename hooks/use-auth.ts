@@ -92,6 +92,14 @@ export function useAuth(): AuthState & AuthActions {
 
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }))
+      
+      // Destroy secure session first
+      await fetch('/api/auth/session', {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      
+      // Then logout from MSAL
       await instance.logoutPopup()
       // Force a full page reload after logout to clear any cached chunks
       window.location.href = '/'
@@ -112,16 +120,67 @@ export function useAuth(): AuthState & AuthActions {
       return null
 
     try {
+      // First try to get token from secure session
+      const sessionResponse = await fetch('/api/auth/session', {
+        method: 'GET',
+        credentials: 'include',
+      })
+
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json()
+        if (sessionData.success && sessionData.session) {
+          // Return from secure session if available
+          return sessionData.session.accessToken || null
+        }
+      }
+
+      // Fall back to MSAL token acquisition
       const request: SilentRequest = {
         ...tokenRequest,
         account,
       }
       const response = await instance.acquireTokenSilent(request)
+      
+      // Store the new token in secure session
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          tokenData: response,
+          userInfo: {
+            id: account.localAccountId || account.homeAccountId,
+            email: account.username,
+            name: account.name || account.username,
+          },
+        }),
+      })
+
       return response.accessToken
     }
     catch (error) {
       try {
         const response = await instance.acquireTokenPopup(tokenRequest)
+        
+        // Store the new token in secure session
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            tokenData: response,
+            userInfo: {
+              id: account.localAccountId || account.homeAccountId,
+              email: account.username,
+              name: account.name || account.username,
+            },
+          }),
+        })
+
         return response.accessToken
       }
       catch (popupError) {

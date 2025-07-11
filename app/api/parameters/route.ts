@@ -4,7 +4,7 @@ import { client, getInfo, getSessionHeaders } from '@/app/api/utils/common'
 
 export async function GET(request: NextRequest) {
   try {
-    const { sessionId, user } = getInfo(request)
+    const { sessionId, user } = await getInfo(request)
     const { data } = await client.getApplicationParameters(user)
     return NextResponse.json(data as object, {
       headers: getSessionHeaders(request, sessionId),

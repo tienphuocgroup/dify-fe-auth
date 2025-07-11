@@ -14,8 +14,8 @@ export const msalConfig: Configuration = {
     postLogoutRedirectUri: process.env.NEXT_PUBLIC_MSAL_POST_LOGOUT_REDIRECT_URI || (typeof window !== 'undefined' ? window.location.origin : ''),
   },
   cache: {
-    cacheLocation: 'localStorage',
-    storeAuthStateInCookie: false,
+    cacheLocation: 'sessionStorage', // Use sessionStorage temporarily during migration
+    storeAuthStateInCookie: true,    // Enable cookie protection for auth state
   },
   system: {
     loggerOptions: {
