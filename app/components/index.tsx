@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce, { setAutoFreeze } from 'immer'
+import { produce, setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import useConversation from '@/hooks/use-conversation'
 import { useAuthContext } from '@/contexts/auth-context'
@@ -450,8 +450,11 @@ const Main: FC<IMainProps> = () => {
         }
         else {
           const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-          if (lastThought)
-            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+          if (lastThought) {
+            // Create new object instead of mutating
+            const updatedThought = { ...lastThought, thought: lastThought.thought + message }
+            responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1] = updatedThought
+          }
         }
         if (messageId && !hasSetResponseId) {
           responseItem.id = messageId
@@ -520,9 +523,13 @@ const Main: FC<IMainProps> = () => {
           const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
           // thought changed but still the same thought, so update.
           if (lastThought.id === thought.id) {
-            thought.thought = lastThought.thought
-            thought.message_files = lastThought.message_files
-            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+            // Create new object instead of mutating
+            const updatedThought = { 
+              ...thought, 
+              thought: lastThought.thought,
+              message_files: lastThought.message_files
+            }
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = updatedThought
           }
           else {
             responseItem.agent_thoughts!.push(thought)

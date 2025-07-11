@@ -35,8 +35,14 @@ export function Markdown(props: { content: string }) {
                 </code>
               )
           },
+          a({ node, children, ...props }) {
+            return (
+              <a {...props} target="_blank" rel="noopener noreferrer">
+                {children}
+              </a>
+            )
+          },
         }}
-        linkTarget={'_blank'}
       >
         {props.content}
       </ReactMarkdown>
