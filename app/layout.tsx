@@ -7,12 +7,12 @@ import ChunkErrorHandler from '@/app/components/chunk-error-handler'
 import './styles/globals.css'
 import './styles/markdown.scss'
 
-const LocaleLayout = ({
+const LocaleLayout = async ({
   children,
 }: {
   children: React.ReactNode
 }) => {
-  const locale = getLocaleOnServer()
+  const locale = await getLocaleOnServer()
   return (
     <html lang={locale ?? 'en'} className="h-full">
       <body className="h-full">
