@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     console.error('Conversations API error:', error)
     return NextResponse.json({
       data: [],
-      error: error.message,
+      error: 'Failed to fetch conversations',
     }, { status: 500 })
   }
 }
