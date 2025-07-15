@@ -15,6 +15,8 @@ import Toast from '@/app/components/base/toast'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { useImageFiles } from '@/app/components/base/image-uploader/hooks'
+import FileUploaderInAttachment from '@/app/components/base/file-uploader-in-attachment'
+import type { FileEntity } from '@/app/components/base/file-uploader-in-attachment/types'
 
 export type IChatProps = {
   chatList: ChatItem[]
@@ -33,6 +35,7 @@ export type IChatProps = {
   isResponding?: boolean
   controlClearQuery?: number
   visionConfig?: VisionSettings
+  fileUploadConfig?: any // 📎 NEW: Full file upload configuration from Dify
 }
 
 const Chat: FC<IChatProps> = ({
@@ -46,6 +49,7 @@ const Chat: FC<IChatProps> = ({
   isResponding,
   controlClearQuery,
   visionConfig,
+  fileUploadConfig,
 }) => {
   const { t } = useTranslation()
   const { notify } = Toast
@@ -89,18 +93,48 @@ const Chat: FC<IChatProps> = ({
     onClear,
   } = useImageFiles()
 
+  // Document file state management
+  const [documentFiles, setDocumentFiles] = React.useState<FileEntity[]>([])
+
+  // Document upload detection based on backend configuration
+  const hasDocumentUpload = fileUploadConfig?.enabled && 
+    (fileUploadConfig?.allowed_file_types?.includes('document') || 
+     fileUploadConfig?.allowed_file_types?.includes('custom'))
+
   const handleSend = () => {
     if (!valid() || (checkCanSend && !checkCanSend()))
       return
-    onSend(queryRef.current, files.filter(file => file.progress !== -1).map(fileItem => ({
+    
+    // Process image files
+    const imageFiles = files.filter(file => file.progress !== -1).map(fileItem => ({
       type: 'image',
       transfer_method: fileItem.type,
       url: fileItem.url,
       upload_file_id: fileItem.fileId,
-    })))
-    if (!files.find(item => item.type === TransferMethod.local_file && !item.fileId)) {
+    }))
+    
+    // Process document files
+    const processedDocumentFiles = documentFiles.filter(file => file.progress !== -1).map(fileItem => ({
+      type: fileItem.supportFileType,
+      transfer_method: fileItem.transferMethod,
+      url: fileItem.url || '',
+      upload_file_id: fileItem.uploadedId || '',
+    }))
+    
+    // Combine all files
+    const allFiles = [...imageFiles, ...processedDocumentFiles]
+    
+    onSend(queryRef.current, allFiles)
+    
+    // Clear files after successful send
+    const hasIncompleteImageFiles = files.find(item => item.type === TransferMethod.local_file && !item.fileId)
+    const hasIncompleteDocumentFiles = documentFiles.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+    
+    if (!hasIncompleteImageFiles && !hasIncompleteDocumentFiles) {
       if (files.length)
         onClear()
+      if (documentFiles.length)
+        setDocumentFiles([])
       if (!isResponding) {
         setQuery('')
         queryRef.current = ''
@@ -187,10 +221,25 @@ const Chat: FC<IChatProps> = ({
                   </>
                 )
               }
+              {
+                /* Document Upload Feature (Paperclip) */
+                hasDocumentUpload && (
+                  <>
+                    <div className={`absolute bottom-2 ${visionConfig?.enabled ? 'left-14' : 'left-2'} flex items-center`}>
+                      <FileUploaderInAttachment
+                        value={documentFiles}
+                        onChange={setDocumentFiles}
+                        fileConfig={fileUploadConfig}
+                      />
+                      <div className='mx-1 w-[1px] h-4 bg-black/5' />
+                    </div>
+                  </>
+                )
+              }
               <Textarea
                 className={`
                   block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
-                  ${visionConfig?.enabled && 'pl-12'}
+                  ${visionConfig?.enabled && hasDocumentUpload ? 'pl-24' : (visionConfig?.enabled || hasDocumentUpload) ? 'pl-12' : ''}
                 `}
                 value={query}
                 onChange={handleContentChange}

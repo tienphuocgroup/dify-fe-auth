@@ -57,6 +57,9 @@ const Main: FC<IMainProps> = () => {
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
+  
+  // 📎 NEW: Full file upload configuration state (beyond just images)
+  const [fileUploadConfig, setFileUploadConfig] = useState<any>(null)
 
   useEffect(() => {
     if (APP_INFO?.title)
@@ -263,6 +266,12 @@ const Main: FC<IMainProps> = () => {
 
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, file_upload, system_parameters, suggested_questions = [] }: any = appParams
+        
+        // 🔍 DEBUGGING: Log full response to investigate document upload capabilities
+        console.log('🚀 DIFY FULL RESPONSE:', JSON.stringify(appParams, null, 2))
+        console.log('📎 FILE UPLOAD CONFIG:', JSON.stringify(file_upload, null, 2))
+        console.log('⚙️ SYSTEM PARAMETERS:', JSON.stringify(system_parameters, null, 2))
+        
         setLocaleOnClient(APP_INFO.default_language, true)
         setNewConversationInfo({
           name: t('app.chat.newChatDefaultName'),
@@ -281,9 +290,36 @@ const Main: FC<IMainProps> = () => {
           prompt_template: promptTemplate,
           prompt_variables,
         } as PromptConfig)
+        // 🚨 CURRENT ISSUE: Only extracting image config, missing document upload!
+        console.log('🔍 CURRENT IMAGE CONFIG:', file_upload?.image)
+        console.log('🔍 FULL FILE_UPLOAD OBJECT:', file_upload)
+        console.log('🔍 CHECKING FOR DOCUMENT UPLOAD:', {
+          enabled: file_upload?.enabled,
+          allowed_file_types: file_upload?.allowed_file_types,
+          allowed_file_extensions: file_upload?.allowed_file_extensions,
+          allowed_file_upload_methods: file_upload?.allowed_file_upload_methods
+        })
+        
+        // 🖼️ Keep current image config (visionConfig) for backward compatibility
         setVisionConfig({
           ...file_upload?.image,
           image_file_size_limit: system_parameters?.system_parameters || 0,
+        })
+        
+        // 📎 NEW: Capture full file upload configuration for document support
+        setFileUploadConfig(file_upload)
+        
+        // 🔍 ANALYSIS: Check if document upload is enabled but not displayed
+        const hasDocumentUpload = file_upload?.enabled && 
+          (file_upload?.allowed_file_types?.includes('document') || 
+           file_upload?.allowed_file_types?.includes('custom'))
+        
+        console.log('📋 DOCUMENT UPLOAD ANALYSIS:', {
+          hasDocumentUpload,
+          fullFileUploadEnabled: file_upload?.enabled,
+          allowedFileTypes: file_upload?.allowed_file_types,
+          currentlyShowingOnlyImages: !!file_upload?.image?.enabled,
+          missingDocumentFeature: hasDocumentUpload && !file_upload?.image?.enabled
         })
 
         if (isNotNewConversation && isAuthenticated)
@@ -728,6 +764,7 @@ const Main: FC<IMainProps> = () => {
                       isResponding={isResponding}
                       checkCanSend={checkCanSend}
                       visionConfig={visionConfig}
+                      fileUploadConfig={fileUploadConfig}
                     />
                   </div>
                 </div>)
