@@ -26,9 +26,15 @@ type Option = {
 }
 type FileUploaderInAttachmentProps = {
   fileConfig: FileUpload
+  value?: FileEntity[]
+  onChange?: (files: FileEntity[]) => void
+  showFileList?: boolean
 }
 const FileUploaderInAttachment = ({
   fileConfig,
+  value,
+  onChange,
+  showFileList = true,
 }: FileUploaderInAttachmentProps) => {
   const { t } = useTranslation()
   const files = useStore(s => s.files)
@@ -53,8 +59,15 @@ const FileUploaderInAttachment = ({
     return (
       <Button
         key={option.value}
-        // variant='tertiary'
-        className={cn('relative grow', open && 'bg-components-button-tertiary-bg-hover')}
+        variant='tertiary'
+        className={cn(
+          'relative flex items-center justify-center px-3 py-2 text-sm font-medium transition-colors',
+          'border border-gray-300 rounded-md',
+          'hover:bg-gray-50 hover:border-gray-400',
+          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          open && 'bg-gray-50 border-gray-400'
+        )}
         disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
         {option.icon}
@@ -88,23 +101,25 @@ const FileUploaderInAttachment = ({
 
   return (
     <div>
-      <div className='flex items-center space-x-1'>
+      <div className='flex flex-wrap items-center gap-2'>
         {options.map(renderOption)}
       </div>
-      <div className='mt-1 space-y-1'>
-        {
-          files.map(file => (
-            <FileItem
-              key={file.id}
-              file={file}
-              showDeleteAction
-              showDownloadAction={false}
-              onRemove={() => handleRemoveFile(file.id)}
-              onReUpload={() => handleReUploadFile(file.id)}
-            />
-          ))
-        }
-      </div>
+      {showFileList && (
+        <div className='mt-2 space-y-2 max-h-40 overflow-y-auto'>
+          {
+            files.map(file => (
+              <FileItem
+                key={file.id}
+                file={file}
+                showDeleteAction
+                showDownloadAction={false}
+                onRemove={() => handleRemoveFile(file.id)}
+                onReUpload={() => handleReUploadFile(file.id)}
+              />
+            ))
+          }
+        </div>
+      )}
     </div>
   )
 }
@@ -113,18 +128,20 @@ type FileUploaderInAttachmentWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload
+  showFileList?: boolean
 }
 const FileUploaderInAttachmentWrapper = ({
   value,
   onChange,
   fileConfig,
+  showFileList = true,
 }: FileUploaderInAttachmentWrapperProps) => {
   return (
     <FileContextProvider
       value={value}
       onChange={onChange}
     >
-      <FileUploaderInAttachment fileConfig={fileConfig} />
+      <FileUploaderInAttachment fileConfig={fileConfig} showFileList={showFileList} />
     </FileContextProvider>
   )
 }

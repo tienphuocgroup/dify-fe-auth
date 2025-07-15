@@ -42,6 +42,9 @@ const FileInput = ({
       accept={accept}
       disabled={!!(fileConfig.number_limits && files.length >= fileConfig?.number_limits)}
       multiple={!!fileConfig.number_limits && fileConfig.number_limits > 1}
+      aria-label="Upload files from computer"
+      aria-describedby="file-upload-help"
+      tabIndex={0}
     />
   )
 }

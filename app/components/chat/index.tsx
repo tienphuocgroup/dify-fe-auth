@@ -16,7 +16,9 @@ import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-u
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { useImageFiles } from '@/app/components/base/image-uploader/hooks'
 import FileUploaderInAttachment from '@/app/components/base/file-uploader-in-attachment'
+import ChatDocumentUploader from '@/app/components/base/file-uploader-in-attachment/chat-document-uploader'
 import type { FileEntity } from '@/app/components/base/file-uploader-in-attachment/types'
+import { FileContextProvider } from '@/app/components/base/file-uploader-in-attachment/store'
 
 export type IChatProps = {
   chatList: ChatItem[]
@@ -198,44 +200,57 @@ const Chat: FC<IChatProps> = ({
         !isHideSendInput && (
           <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
             <div className='p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto'>
-              {
-                visionConfig?.enabled && (
-                  <>
-                    <div className='absolute bottom-2 left-2 flex items-center'>
-                      <ChatImageUploader
-                        settings={visionConfig}
-                        onUpload={onUpload}
-                        disabled={files.length >= visionConfig.number_limits}
-                      />
-                      <div className='mx-1 w-[1px] h-4 bg-black/5' />
-                    </div>
-                    <div className='pl-[52px]'>
-                      <ImageList
-                        list={files}
-                        onRemove={onRemove}
-                        onReUpload={onReUpload}
-                        onImageLinkLoadSuccess={onImageLinkLoadSuccess}
-                        onImageLinkLoadError={onImageLinkLoadError}
-                      />
-                    </div>
-                  </>
-                )
-              }
-              {
-                /* Document Upload Feature (Paperclip) */
-                hasDocumentUpload && (
-                  <>
-                    <div className={`absolute bottom-2 ${visionConfig?.enabled ? 'left-14' : 'left-2'} flex items-center`}>
-                      <FileUploaderInAttachment
-                        value={documentFiles}
-                        onChange={setDocumentFiles}
-                        fileConfig={fileUploadConfig}
-                      />
-                      <div className='mx-1 w-[1px] h-4 bg-black/5' />
-                    </div>
-                  </>
-                )
-              }
+              {/* File Lists Display */}
+              {visionConfig?.enabled && files.length > 0 && (
+                <div className='pl-2 mb-2'>
+                  <ImageList
+                    list={files}
+                    onRemove={onRemove}
+                    onReUpload={onReUpload}
+                    onImageLinkLoadSuccess={onImageLinkLoadSuccess}
+                    onImageLinkLoadError={onImageLinkLoadError}
+                  />
+                </div>
+              )}
+              
+              {hasDocumentUpload && documentFiles.length > 0 && (
+                <div className='pl-2 mb-2'>
+                  <FileUploaderInAttachment
+                    value={documentFiles}
+                    onChange={setDocumentFiles}
+                    fileConfig={fileUploadConfig}
+                    showFileList={true}
+                  />
+                </div>
+              )}
+              
+              {/* Upload Icons */}
+              {visionConfig?.enabled && (
+                <div className='absolute bottom-2 left-2 flex items-center'>
+                  <ChatImageUploader
+                    settings={visionConfig}
+                    onUpload={onUpload}
+                    disabled={files.length >= visionConfig.number_limits}
+                  />
+                  <div className='mx-1 w-[1px] h-4 bg-black/5' />
+                </div>
+              )}
+              
+              {hasDocumentUpload && (
+                <div className={`absolute bottom-2 ${visionConfig?.enabled ? 'left-14' : 'left-2'} flex items-center`}>
+                  <FileContextProvider
+                    value={documentFiles}
+                    onChange={setDocumentFiles}
+                  >
+                    <ChatDocumentUploader
+                      fileConfig={fileUploadConfig}
+                      disabled={!!(fileUploadConfig.number_limits && documentFiles.length >= fileUploadConfig.number_limits)}
+                    />
+                  </FileContextProvider>
+                  <div className='mx-1 w-[1px] h-4 bg-black/5' />
+                </div>
+              )}
+              
               <Textarea
                 className={`
                   block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none

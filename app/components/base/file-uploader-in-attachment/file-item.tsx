@@ -47,8 +47,9 @@ const FileInAttachmentItem = ({
   return (
     <>
       <div className={cn(
-        'flex h-12 items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pr-3 shadow-xs',
-        progress === -1 && 'border-state-destructive-border bg-state-destructive-hover',
+        'flex min-h-12 items-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 pr-3 shadow-sm transition-colors',
+        'sm:h-12',
+        progress === -1 && 'border-red-200 bg-red-50',
       )}>
         <div className='flex h-12 w-12 items-center justify-center'>
           {
@@ -68,14 +69,14 @@ const FileInAttachmentItem = ({
             )
           }
         </div>
-        <div className='mr-1 w-0 grow'>
+        <div className='mr-3 w-0 grow min-w-0'>
           <div
-            className='system-xs-medium mb-0.5 flex items-center truncate text-text-secondary'
+            className='text-sm font-medium mb-0.5 flex items-center truncate text-gray-700'
             title={file.name}
           >
             <div className='truncate'>{name}</div>
           </div>
-          <div className='system-2xs-medium-uppercase flex items-center text-text-tertiary'>
+          <div className='text-xs flex items-center text-gray-500 flex-wrap'>
             {
               ext && (
                 <span>{ext.toLowerCase()}</span>
@@ -83,7 +84,7 @@ const FileInAttachmentItem = ({
             }
             {
               ext && (
-                <span className='system-2xs-medium mx-1'>•</span>
+                <span className='mx-1'>•</span>
               )
             }
             {
